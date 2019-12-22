@@ -72,8 +72,10 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
         }
 
         if (!tmpList.isEmpty()) {
+            // FIXME: 2019/12/22 既然要排序为什么还要先shuffle？
             Collections.shuffle(tmpList);
 
+            // TODO: 2019/12/22 按 可用->延迟低->不可用开始时间点早 排序
             Collections.sort(tmpList);
 
             final int half = tmpList.size() / 2;

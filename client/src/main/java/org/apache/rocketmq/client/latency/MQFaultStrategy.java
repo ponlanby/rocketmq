@@ -28,7 +28,9 @@ public class MQFaultStrategy {
 
     private boolean sendLatencyFaultEnable = false;
 
+    // TODO: 2019/12/22 消息延迟的时间区间
     private long[] latencyMax = {50L, 100L, 550L, 1000L, 2000L, 3000L, 15000L};
+    // TODO: 2019/12/22 消息延迟区间对应的broker不可用的时间
     private long[] notAvailableDuration = {0L, 0L, 30000L, 60000L, 120000L, 180000L, 600000L};
 
     public long[] getNotAvailableDuration() {
@@ -65,11 +67,13 @@ public class MQFaultStrategy {
                         pos = 0;
                     MessageQueue mq = tpInfo.getMessageQueueList().get(pos);
                     if (latencyFaultTolerance.isAvailable(mq.getBrokerName())) {
+                        // TODO: 2019/12/22 判断mq.getBrokerName().equals(lastBrokerName)说明上次发送的时候lastBroker不可用，而现在已经恢复了可以直接使用
                         if (null == lastBrokerName || mq.getBrokerName().equals(lastBrokerName))
                             return mq;
                     }
                 }
 
+                // TODO: 2019/12/22 尝试从所有不可用的broker中取出一个可用的
                 final String notBestBroker = latencyFaultTolerance.pickOneAtLeast();
                 int writeQueueNums = tpInfo.getQueueIdByBroker(notBestBroker);
                 if (writeQueueNums > 0) {

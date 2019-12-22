@@ -495,12 +495,14 @@ public class MessageDecoder {
         message.setFlag(flag);
 
         // 5 BODY
+        // TODO: 2019/12/22 body总长
         int bodyLen = byteBuffer.getInt();
         byte[] body = new byte[bodyLen];
         byteBuffer.get(body);
         message.setBody(body);
 
         // 6 properties
+        // TODO: 2019/12/22 属性总长
         short propertiesLen = byteBuffer.getShort();
         byte[] propertiesBytes = new byte[propertiesLen];
         byteBuffer.get(propertiesBytes);
@@ -509,6 +511,7 @@ public class MessageDecoder {
         return message;
     }
 
+    // TODO: 2019/12/22 将所有的消息拼在一起
     public static byte[] encodeMessages(List<Message> messages) {
         //TO DO refactor, accumulate in one buffer, avoid copies
         List<byte[]> encodedMessages = new ArrayList<byte[]>(messages.size());
@@ -530,6 +533,7 @@ public class MessageDecoder {
     public static List<Message> decodeMessages(ByteBuffer byteBuffer) throws Exception {
         //TO DO add a callback for processing,  avoid creating lists
         List<Message> msgs = new ArrayList<Message>();
+        // TODO: 2019/12/22 循环解码batchMessage
         while (byteBuffer.hasRemaining()) {
             Message msg = decodeMessage(byteBuffer);
             msgs.add(msg);

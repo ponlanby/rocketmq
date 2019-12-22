@@ -526,6 +526,7 @@ public class MQClientAPIImpl {
                 if (null == sendCallback && response != null) {
 
                     try {
+                        // TODO: 2019/12/22 处理发送结果
                         SendResult sendResult = MQClientAPIImpl.this.processSendResponse(brokerName, msg, response);
                         if (context != null && sendResult != null) {
                             context.setSendResult(sendResult);
@@ -534,6 +535,7 @@ public class MQClientAPIImpl {
                     } catch (Throwable e) {
                     }
 
+                    // TODO: 2019/12/22 更新失效broker
                     producer.updateFaultItem(brokerName, System.currentTimeMillis() - responseFuture.getBeginTimestamp(), false);
                     return;
                 }
@@ -548,6 +550,7 @@ public class MQClientAPIImpl {
                         }
 
                         try {
+                            // TODO: 2019/12/22 回调
                             sendCallback.onSuccess(sendResult);
                         } catch (Throwable e) {
                         }
@@ -641,6 +644,7 @@ public class MQClientAPIImpl {
         final Message msg,
         final RemotingCommand response
     ) throws MQBrokerException, RemotingCommandException {
+        // FIXME: 2019/12/22 这里是什么意思？？？
         switch (response.getCode()) {
             case ResponseCode.FLUSH_DISK_TIMEOUT:
             case ResponseCode.FLUSH_SLAVE_TIMEOUT:
