@@ -47,11 +47,13 @@ public class TransientStorePool {
      * It's a heavy init method.
      */
     public void init() {
+        // TODO: 2019/12/26 分配 poolSize*fileSize 大小的内存缓冲区
         for (int i = 0; i < poolSize; i++) {
             ByteBuffer byteBuffer = ByteBuffer.allocateDirect(fileSize);
 
             final long address = ((DirectBuffer) byteBuffer).address();
             Pointer pointer = new Pointer(address);
+            // TODO: 2019/12/26 锁定内存，避免被交换到硬盘
             LibC.INSTANCE.mlock(pointer, new NativeLong(fileSize));
 
             availableBuffers.offer(byteBuffer);
@@ -74,6 +76,7 @@ public class TransientStorePool {
 
     public ByteBuffer borrowBuffer() {
         ByteBuffer buffer = availableBuffers.pollFirst();
+        // TODO: 2019/12/26 缓冲区空间少于40%
         if (availableBuffers.size() < poolSize * 0.4) {
             log.warn("TransientStorePool only remain {} sheets.", availableBuffers.size());
         }

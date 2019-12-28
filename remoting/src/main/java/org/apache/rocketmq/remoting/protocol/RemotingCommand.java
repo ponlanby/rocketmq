@@ -80,6 +80,7 @@ public class RemotingCommand {
 
     private SerializeType serializeTypeCurrentRPC = serializeTypeConfigInThisServer;
 
+    // FIXME: 2019/12/23 为什么body是transient的???
     private transient byte[] body;
 
     protected RemotingCommand() {

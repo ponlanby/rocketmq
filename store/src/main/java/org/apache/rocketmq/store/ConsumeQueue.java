@@ -471,6 +471,7 @@ public class ConsumeQueue {
                 }
             }
             this.maxPhysicOffset = offset + size;
+            // TODO: 2019/12/28  ConsumeQueue固定异步刷盘
             return mappedFile.appendMessage(this.byteBufferIndex.array());
         }
         return false;
@@ -490,14 +491,17 @@ public class ConsumeQueue {
 
     public SelectMappedBufferResult getIndexBuffer(final long startIndex) {
         int mappedFileSize = this.mappedFileSize;
+        // TODO: 2019/12/26 ConsumeQueue一条20字节
         long offset = startIndex * CQ_STORE_UNIT_SIZE;
         if (offset >= this.getMinLogicOffset()) {
+            // TODO: 2019/12/26 该ConsumeQueue条目所在的物理文件
             MappedFile mappedFile = this.mappedFileQueue.findMappedFileByOffset(offset);
             if (mappedFile != null) {
                 SelectMappedBufferResult result = mappedFile.selectMappedBuffer((int) (offset % mappedFileSize));
                 return result;
             }
         }
+        // TODO: 2019/12/26 说明此消息已被删除
         return null;
     }
 

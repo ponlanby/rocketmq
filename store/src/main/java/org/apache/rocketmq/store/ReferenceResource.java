@@ -58,8 +58,8 @@ public abstract class ReferenceResource {
         if (value > 0)
             return;
 
+        // TODO: 2019/12/26 引用为空就关掉
         synchronized (this) {
-
             this.cleanupOver = this.cleanup(value);
         }
     }

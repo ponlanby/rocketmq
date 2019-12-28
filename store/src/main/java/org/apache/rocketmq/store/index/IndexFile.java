@@ -90,9 +90,11 @@ public class IndexFile {
     }
 
     public boolean putKey(final String key, final long phyOffset, final long storeTimestamp) {
+        // TODO: 2019/12/28 index是否已满
         if (this.indexHeader.getIndexCount() < this.indexNum) {
             int keyHash = indexKeyHashMethod(key);
             int slotPos = keyHash % this.hashSlotNum;
+            // TODO: 2019/12/28 hashcode对应的hash槽的物理地址
             int absSlotPos = IndexHeader.INDEX_HEADER_SIZE + slotPos * hashSlotSize;
 
             FileLock fileLock = null;
@@ -101,7 +103,9 @@ public class IndexFile {
 
                 // fileLock = this.fileChannel.lock(absSlotPos, hashSlotSize,
                 // false);
+                // TODO: 2019/12/28 取出该hash槽的值
                 int slotValue = this.mappedByteBuffer.getInt(absSlotPos);
+                // TODO: 2019/12/28 因为hash值是取余得到的，所以合法区间在0-indexCount之间
                 if (slotValue <= invalidIndex || slotValue > this.indexHeader.getIndexCount()) {
                     slotValue = invalidIndex;
                 }
@@ -118,6 +122,7 @@ public class IndexFile {
                     timeDiff = 0;
                 }
 
+                // TODO: 2019/12/28 计算新添加的index条目的物理位置
                 int absIndexPos =
                     IndexHeader.INDEX_HEADER_SIZE + this.hashSlotNum * hashSlotSize
                         + this.indexHeader.getIndexCount() * indexSize;
@@ -190,7 +195,9 @@ public class IndexFile {
         final long begin, final long end, boolean lock) {
         if (this.mappedFile.hold()) {
             int keyHash = indexKeyHashMethod(key);
+            // TODO: 2019/12/28 key的hash值对应的hashslot下标
             int slotPos = keyHash % this.hashSlotNum;
+            // TODO: 2019/12/28 找到hashslot的物理地址
             int absSlotPos = IndexHeader.INDEX_HEADER_SIZE + slotPos * hashSlotSize;
 
             FileLock fileLock = null;
@@ -206,6 +213,7 @@ public class IndexFile {
                 // fileLock = null;
                 // }
 
+                // TODO: 2019/12/28 slot的index下标无效
                 if (slotValue <= invalidIndex || slotValue > this.indexHeader.getIndexCount()
                     || this.indexHeader.getIndexCount() <= 1) {
                 } else {
@@ -214,6 +222,7 @@ public class IndexFile {
                             break;
                         }
 
+                        // TODO: 2019/12/28 计算读取的index物理位置
                         int absIndexPos =
                             IndexHeader.INDEX_HEADER_SIZE + this.hashSlotNum * hashSlotSize
                                 + nextIndexToRead * indexSize;
@@ -224,6 +233,7 @@ public class IndexFile {
                         long timeDiff = (long) this.mappedByteBuffer.getInt(absIndexPos + 4 + 8);
                         int prevIndexRead = this.mappedByteBuffer.getInt(absIndexPos + 4 + 8 + 4);
 
+                        // TODO: 2019/12/28 无效消息
                         if (timeDiff < 0) {
                             break;
                         }
@@ -233,6 +243,7 @@ public class IndexFile {
                         long timeRead = this.indexHeader.getBeginTimestamp() + timeDiff;
                         boolean timeMatched = (timeRead >= begin) && (timeRead <= end);
 
+                        // TODO: 2019/12/28 满足条件的offset
                         if (keyHash == keyHashRead && timeMatched) {
                             phyOffsets.add(phyOffsetRead);
                         }

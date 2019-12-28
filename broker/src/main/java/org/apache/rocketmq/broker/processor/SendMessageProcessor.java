@@ -266,6 +266,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                 return false;
             }
 
+            // TODO: 2019/12/25 消息重试超过最大重试次数则进入延迟队列 
             int maxReconsumeTimes = subscriptionGroupConfig.getRetryMaxTimes();
             if (request.getVersion() >= MQVersion.Version.V3_4_9.ordinal()) {
                 maxReconsumeTimes = requestHeader.getMaxReconsumeTimes();
@@ -295,7 +296,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         return true;
     }
 
-    // FIXME: 2019/12/22 broker接收client发送的消息的入口
+    // TODO: 2019/12/25 broker接收client发送的消息的入口
     private RemotingCommand sendMessage(final ChannelHandlerContext ctx,
                                         final RemotingCommand request,
                                         final SendMessageContext sendMessageContext,
@@ -329,6 +330,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         int queueIdInt = requestHeader.getQueueId();
         TopicConfig topicConfig = this.brokerController.getTopicConfigManager().selectTopicConfig(requestHeader.getTopic());
 
+        // TODO: 2019/12/25 如果队列小于0，从可用队列随机选择 
         if (queueIdInt < 0) {
             queueIdInt = Math.abs(this.random.nextInt() % 99999999) % topicConfig.getWriteQueueNums();
         }
@@ -355,6 +357,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         Map<String, String> oriProps = MessageDecoder.string2messageProperties(requestHeader.getProperties());
         String traFlag = oriProps.get(MessageConst.PROPERTY_TRANSACTION_PREPARED);
         if (traFlag != null && Boolean.parseBoolean(traFlag)) {
+            // TODO: 2019/12/25 broker不允许事务消息
             if (this.brokerController.getBrokerConfig().isRejectTransactionMessage()) {
                 response.setCode(ResponseCode.NO_PERMISSION);
                 response.setRemark(

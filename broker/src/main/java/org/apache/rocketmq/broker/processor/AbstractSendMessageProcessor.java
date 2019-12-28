@@ -164,6 +164,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
 
     protected RemotingCommand msgCheck(final ChannelHandlerContext ctx,
         final SendMessageRequestHeader requestHeader, final RemotingCommand response) {
+        // FIXME: 2019/12/25 为什么顺序消息也不行？？？
         if (!PermName.isWriteable(this.brokerController.getBrokerConfig().getBrokerPermission())
             && this.brokerController.getTopicConfigManager().isOrderTopic(requestHeader.getTopic())) {
             response.setCode(ResponseCode.NO_PERMISSION);
@@ -216,6 +217,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
         }
 
         int queueIdInt = requestHeader.getQueueId();
+        // FIXME: 2019/12/25 为什么是度队列和写队列一起判断的？？？
         int idValid = Math.max(topicConfig.getWriteQueueNums(), topicConfig.getReadQueueNums());
         if (queueIdInt >= idValid) {
             String errorInfo = String.format("request queueId[%d] is illegal, %s Producer: %s",

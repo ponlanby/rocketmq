@@ -172,6 +172,7 @@ public class CommitLog {
             MappedFile mappedFile = mappedFiles.get(index);
             ByteBuffer byteBuffer = mappedFile.sliceByteBuffer();
             long processOffset = mappedFile.getFileFromOffset();
+            // 当前文件已校验通过的offset
             long mappedFileOffset = 0;
             while (true) {
                 DispatchRequest dispatchRequest = this.checkMessageAndReturnSize(byteBuffer, checkCRCOnRecover);
@@ -564,6 +565,7 @@ public class CommitLog {
         String topic = msg.getTopic();
         int queueId = msg.getQueueId();
 
+        // FIXME: 2019/12/25 事务???
         final int tranType = MessageSysFlag.getTransactionValue(msg.getSysFlag());
         if (tranType == MessageSysFlag.TRANSACTION_NOT_TYPE
             || tranType == MessageSysFlag.TRANSACTION_COMMIT_TYPE) {
@@ -598,9 +600,11 @@ public class CommitLog {
 
         long eclipsedTimeInLock = 0;
 
+        // TODO: 2019/12/25 获取当前可写入的CommitLog
         MappedFile unlockMappedFile = null;
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
 
+        // TODO: 2019/12/25 串行写CommitLog
         putMessageLock.lock(); //spin or ReentrantLock ,depending on store config
         try {
             long beginLockTimestamp = this.defaultMessageStore.getSystemClock().now();
@@ -610,6 +614,7 @@ public class CommitLog {
             // global
             msg.setStoreTimestamp(beginLockTimestamp);
 
+            // TODO: 2019/12/25 没有mappedFile说明是第一次发消息 
             if (null == mappedFile || mappedFile.isFull()) {
                 mappedFile = this.mappedFileQueue.getLastMappedFile(0); // Mark: NewFile may be cause noise
             }
@@ -619,11 +624,13 @@ public class CommitLog {
                 return new PutMessageResult(PutMessageStatus.CREATE_MAPEDFILE_FAILED, null);
             }
 
+            // TODO: 2019/12/25 保存消息
             result = mappedFile.appendMessage(msg, this.appendMessageCallback);
             switch (result.getStatus()) {
                 case PUT_OK:
                     break;
                 case END_OF_FILE:
+                    // TODO: 2019/12/26 新建CommitLog并重新写入消息
                     unlockMappedFile = mappedFile;
                     // Create a new file, re-write the message
                     mappedFile = this.mappedFileQueue.getLastMappedFile(0);
@@ -667,7 +674,9 @@ public class CommitLog {
         storeStatsService.getSinglePutMessageTopicTimesTotal(msg.getTopic()).incrementAndGet();
         storeStatsService.getSinglePutMessageTopicSizeTotal(topic).addAndGet(result.getWroteBytes());
 
+        // TODO: 2019/12/26 刷盘
         handleDiskFlush(result, putMessageResult, msg);
+        // TODO: 2019/12/26 主从同步
         handleHA(result, putMessageResult, msg);
 
         return putMessageResult;
@@ -861,6 +870,7 @@ public class CommitLog {
             if (mappedFile.isAvailable()) {
                 return mappedFile.getFileFromOffset();
             } else {
+                // TODO: 2019/12/26 下一个文件的起始偏移量
                 return this.rollNextFile(mappedFile.getFileFromOffset());
             }
         }
@@ -1248,6 +1258,7 @@ public class CommitLog {
 
             this.resetByteBuffer(storeHostHolder, storeHostLength);
             String msgId;
+            // TODO: 2019/12/26 全局唯一msgID
             if ((sysflag & MessageSysFlag.STOREHOSTADDRESS_V6_FLAG) == 0) {
                 msgId = MessageDecoder.createMessageId(this.msgIdMemory, msgInner.getStoreHostBytes(storeHostHolder), wroteOffset);
             } else {
@@ -1260,6 +1271,7 @@ public class CommitLog {
             keyBuilder.append('-');
             keyBuilder.append(msgInner.getQueueId());
             String key = keyBuilder.toString();
+            // TODO: 2019/12/26 当前所有queue的的写入偏移量
             Long queueOffset = CommitLog.this.topicQueueTable.get(key);
             if (null == queueOffset) {
                 queueOffset = 0L;
@@ -1299,6 +1311,7 @@ public class CommitLog {
 
             final int bodyLength = msgInner.getBody() == null ? 0 : msgInner.getBody().length;
 
+            // TODO: 2019/12/26 计算消息总长度
             final int msgLen = calMsgLength(msgInner.getSysFlag(), bodyLength, topicLength, propertiesLength);
 
             // Exceeds the maximum message
@@ -1308,8 +1321,10 @@ public class CommitLog {
                 return new AppendMessageResult(AppendMessageStatus.MESSAGE_SIZE_EXCEEDED);
             }
 
+            // TODO: 2019/12/26 当前CommitLog长度不够则返回让broker新建一个
             // Determines whether there is sufficient free space
             if ((msgLen + END_FILE_MIN_BLANK_LENGTH) > maxBlank) {
+                
                 this.resetByteBuffer(this.msgStoreItemMemory, maxBlank);
                 // 1 TOTALSIZE
                 this.msgStoreItemMemory.putInt(maxBlank);
@@ -1318,6 +1333,7 @@ public class CommitLog {
                 // 3 The remaining space may be any value
                 // Here the length of the specially set maxBlank
                 final long beginTimeMills = CommitLog.this.defaultMessageStore.now();
+                // TODO: 2019/12/26 当前CommitLog写满
                 byteBuffer.put(this.msgStoreItemMemory.array(), 0, maxBlank);
                 return new AppendMessageResult(AppendMessageStatus.END_OF_FILE, wroteOffset, maxBlank, msgId, msgInner.getStoreTimestamp(),
                     queueOffset, CommitLog.this.defaultMessageStore.now() - beginTimeMills);
@@ -1368,6 +1384,7 @@ public class CommitLog {
                 this.msgStoreItemMemory.put(propertiesData);
 
             final long beginTimeMills = CommitLog.this.defaultMessageStore.now();
+            // TODO: 2019/12/26 写入消息
             // Write messages to the queue buffer
             byteBuffer.put(this.msgStoreItemMemory.array(), 0, msgLen);
 
@@ -1380,6 +1397,7 @@ public class CommitLog {
                     break;
                 case MessageSysFlag.TRANSACTION_NOT_TYPE:
                 case MessageSysFlag.TRANSACTION_COMMIT_TYPE:
+                    // TODO: 2019/12/26 更新queue的写入偏移量
                     // The next update ConsumeQueue information
                     CommitLog.this.topicQueueTable.put(key, ++queueOffset);
                     break;

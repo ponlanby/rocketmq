@@ -150,6 +150,7 @@ public abstract class NettyRemotingAbstract {
      * @param msg incoming remoting command.
      * @throws Exception if there were any error while processing the incoming command.
      */
+    // TODO: 2019/12/25 消息接收入口
     public void processMessageReceived(ChannelHandlerContext ctx, RemotingCommand msg) throws Exception {
         final RemotingCommand cmd = msg;
         if (cmd != null) {
@@ -200,9 +201,11 @@ public abstract class NettyRemotingAbstract {
                 public void run() {
                     try {
                         doBeforeRpcHooks(RemotingHelper.parseChannelRemoteAddr(ctx.channel()), cmd);
+                        // TODO: 2019/12/25 消息处理
                         final RemotingCommand response = pair.getObject1().processRequest(ctx, cmd);
                         doAfterRpcHooks(RemotingHelper.parseChannelRemoteAddr(ctx.channel()), cmd, response);
 
+                        // TODO: 2019/12/25 返回结果
                         if (!cmd.isOnewayRPC()) {
                             if (response != null) {
                                 response.setOpaque(opaque);
@@ -232,6 +235,7 @@ public abstract class NettyRemotingAbstract {
                 }
             };
 
+            // TODO: 2019/12/25 返回流控 
             if (pair.getObject1().rejectRequest()) {
                 final RemotingCommand response = RemotingCommand.createResponseCommand(RemotingSysResponseCode.SYSTEM_BUSY,
                     "[REJECTREQUEST]system busy, start flow control for a while");

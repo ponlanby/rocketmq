@@ -39,6 +39,7 @@ public class MappedFileQueue {
 
     private final int mappedFileSize;
 
+    // FIXME: 2019/12/26 为什么用这个 copy的开销不会很大吗？？？
     private final CopyOnWriteArrayList<MappedFile> mappedFiles = new CopyOnWriteArrayList<MappedFile>();
 
     private final AllocateMappedFileService allocateMappedFileService;
@@ -80,6 +81,7 @@ public class MappedFileQueue {
         if (null == mfs)
             return null;
 
+        // TODO: 2019/12/26 找到第一个最后更新时间大于当前时间戳的MappedFile
         for (int i = 0; i < mfs.length; i++) {
             MappedFile mappedFile = (MappedFile) mfs[i];
             if (mappedFile.getLastModifiedTimestamp() >= timestamp) {
@@ -87,6 +89,7 @@ public class MappedFileQueue {
             }
         }
 
+        // TODO: 2019/12/26 不存在则返回最后一个文件
         return (MappedFile) mfs[mfs.length - 1];
     }
 
@@ -150,6 +153,7 @@ public class MappedFileQueue {
         if (files != null) {
             // ascending order
             Arrays.sort(files);
+            // TODO: 2019/12/28 CommitLog读入MappedFile
             for (File file : files) {
 
                 if (file.length() != this.mappedFileSize) {
@@ -439,6 +443,7 @@ public class MappedFileQueue {
         return result;
     }
 
+    // TODO: 2019/12/26 消息提交
     public boolean commit(final int commitLeastPages) {
         boolean result = true;
         MappedFile mappedFile = this.findMappedFileByOffset(this.committedWhere, this.committedWhere == 0);
@@ -472,6 +477,7 @@ public class MappedFileQueue {
                         this.mappedFileSize,
                         this.mappedFiles.size());
                 } else {
+                    // TODO: 2019/12/26 因为内存映射文件会被定期删除
                     int index = (int) ((offset / this.mappedFileSize) - (firstMappedFile.getFileFromOffset() / this.mappedFileSize));
                     MappedFile targetFile = null;
                     try {

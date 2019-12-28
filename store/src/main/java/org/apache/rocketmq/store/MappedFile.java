@@ -41,6 +41,9 @@ import org.apache.rocketmq.store.config.FlushDiskType;
 import org.apache.rocketmq.store.util.LibC;
 import sun.nio.ch.DirectBuffer;
 
+/**
+ * 内存映射文件
+ */
 public class MappedFile extends ReferenceResource {
     public static final int OS_PAGE_SIZE = 1024 * 4;
     protected static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
@@ -144,6 +147,7 @@ public class MappedFile extends ReferenceResource {
     public void init(final String fileName, final int fileSize,
         final TransientStorePool transientStorePool) throws IOException {
         init(fileName, fileSize);
+        // TODO: 2019/12/26 如果使用TransientStorePool的话申请一块内存缓冲区
         this.writeBuffer = transientStorePool.borrowBuffer();
         this.transientStorePool = transientStorePool;
     }
@@ -159,6 +163,7 @@ public class MappedFile extends ReferenceResource {
 
         try {
             this.fileChannel = new RandomAccessFile(this.file, "rw").getChannel();
+            // TODO: 2019/12/26 申请一块内存映射文件
             this.mappedByteBuffer = this.fileChannel.map(MapMode.READ_WRITE, 0, fileSize);
             TOTAL_MAPPED_VIRTUAL_MEMORY.addAndGet(fileSize);
             TOTAL_MAPPED_FILES.incrementAndGet();
@@ -203,6 +208,7 @@ public class MappedFile extends ReferenceResource {
         int currentPos = this.wrotePosition.get();
 
         if (currentPos < this.fileSize) {
+            // TODO: 2019/12/26 申请一块内存映射文件 writeBuffer:TransientStorePool中的内存
             ByteBuffer byteBuffer = writeBuffer != null ? writeBuffer.slice() : this.mappedByteBuffer.slice();
             byteBuffer.position(currentPos);
             AppendMessageResult result;
@@ -271,10 +277,12 @@ public class MappedFile extends ReferenceResource {
     public int flush(final int flushLeastPages) {
         if (this.isAbleToFlush(flushLeastPages)) {
             if (this.hold()) {
+                // TODO: 2019/12/26 当前有效数据的尾部指针
                 int value = getReadPosition();
 
                 try {
                     //We only append data to fileChannel or mappedByteBuffer, never both.
+                    // TODO: 2019/12/26 channel/buffer里的数据全部持久化
                     if (writeBuffer != null || this.fileChannel.position() != 0) {
                         this.fileChannel.force(false);
                     } else {
@@ -284,6 +292,7 @@ public class MappedFile extends ReferenceResource {
                     log.error("Error occurred when force data to disk.", e);
                 }
 
+                // TODO: 2019/12/26 当前所有有效数据都flush了
                 this.flushedPosition.set(value);
                 this.release();
             } else {
@@ -295,19 +304,23 @@ public class MappedFile extends ReferenceResource {
     }
 
     public int commit(final int commitLeastPages) {
+        // TODO: 2019/12/26 没有使用内存缓冲区
         if (writeBuffer == null) {
             //no need to commit data to file channel, so just regard wrotePosition as committedPosition.
             return this.wrotePosition.get();
         }
         if (this.isAbleToCommit(commitLeastPages)) {
+            // TODO: 2019/12/26 MappedFile引用+1
             if (this.hold()) {
                 commit0(commitLeastPages);
+                // TODO: 2019/12/26 释放MappedFile引用
                 this.release();
             } else {
                 log.warn("in commit, hold failed, commit offset = " + this.committedPosition.get());
             }
         }
 
+        // TODO: 2019/12/26 释放缓冲区
         // All dirty data has been committed to FileChannel.
         if (writeBuffer != null && this.transientStorePool != null && this.fileSize == this.committedPosition.get()) {
             this.transientStorePool.returnBuffer(writeBuffer);
@@ -323,11 +336,13 @@ public class MappedFile extends ReferenceResource {
 
         if (writePos - this.committedPosition.get() > 0) {
             try {
+                // TODO: 2019/12/26 复制一份buffer并取其中writePos-lastCommittedPosition范围的数据
                 ByteBuffer byteBuffer = writeBuffer.slice();
                 byteBuffer.position(lastCommittedPosition);
                 byteBuffer.limit(writePos);
                 this.fileChannel.position(lastCommittedPosition);
                 this.fileChannel.write(byteBuffer);
+                // TODO: 2019/12/26 更新commit的位置为当前写入指针的位置
                 this.committedPosition.set(writePos);
             } catch (Throwable e) {
                 log.error("Error occurred when commit data to FileChannel.", e);
@@ -354,14 +369,17 @@ public class MappedFile extends ReferenceResource {
         int flush = this.committedPosition.get();
         int write = this.wrotePosition.get();
 
+        // TODO: 2019/12/26 内存缓冲区已满
         if (this.isFull()) {
             return true;
         }
 
+        // TODO: 2019/12/26 未提交的页数大于最少提交的页数
         if (commitLeastPages > 0) {
             return ((write / OS_PAGE_SIZE) - (flush / OS_PAGE_SIZE)) >= commitLeastPages;
         }
 
+        // TODO: 2019/12/26 不限制最小提交的页数
         return write > flush;
     }
 
@@ -416,12 +434,14 @@ public class MappedFile extends ReferenceResource {
 
     @Override
     public boolean cleanup(final long currentRef) {
+        // TODO: 2019/12/26 destory一开始就设为non-available了
         if (this.isAvailable()) {
             log.error("this file[REF:" + currentRef + "] " + this.fileName
                 + " have not shutdown, stop unmapping.");
             return false;
         }
 
+        // TODO: 2019/12/26 已经被清空
         if (this.isCleanupOver()) {
             log.error("this file[REF:" + currentRef + "] " + this.fileName
                 + " have cleanup, do not do it again.");

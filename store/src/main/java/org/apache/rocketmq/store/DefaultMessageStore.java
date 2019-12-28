@@ -177,9 +177,11 @@ public class DefaultMessageStore implements MessageStore {
         boolean result = true;
 
         try {
+            // TODO: 2019/12/28 abort文件是否已被删除
             boolean lastExitOK = !this.isTempFileExist();
             log.info("last shutdown {}", lastExitOK ? "normally" : "abnormally");
 
+            // TODO: 2019/12/28 加载延迟队列
             if (null != scheduleMessageService) {
                 result = result && this.scheduleMessageService.load();
             }
@@ -191,6 +193,7 @@ public class DefaultMessageStore implements MessageStore {
             result = result && this.loadConsumeQueue();
 
             if (result) {
+                // TODO: 2019/12/28 CommitLog、ConsumeQueue和IndexFile的刷盘点
                 this.storeCheckpoint =
                     new StoreCheckpoint(StorePathConfigHelper.getStoreCheckpoint(this.messageStoreConfig.getStorePathRootDir()));
 
@@ -282,7 +285,9 @@ public class DefaultMessageStore implements MessageStore {
         this.commitLog.start();
         this.storeStatsService.start();
 
+        // TODO: 2019/12/28 生成abort文件
         this.createTempFile();
+        // TODO: 2019/12/28 初始化定时任务
         this.addScheduleTask();
         this.shutdown = false;
     }
@@ -358,6 +363,7 @@ public class DefaultMessageStore implements MessageStore {
         }
 
         if (BrokerRole.SLAVE == this.messageStoreConfig.getBrokerRole()) {
+            // FIXME: 2019/12/25 为啥是这么判断slave的？？？
             long value = this.printTimes.getAndIncrement();
             if ((value % 50000) == 0) {
                 log.warn("message store is slave mode, so putMessage is forbidden ");
@@ -387,11 +393,13 @@ public class DefaultMessageStore implements MessageStore {
             return new PutMessageResult(PutMessageStatus.PROPERTIES_SIZE_EXCEEDED, null);
         }
 
+        // FIXME: 2019/12/25 为什么这里要设置时间上限???
         if (this.isOSPageCacheBusy()) {
             return new PutMessageResult(PutMessageStatus.OS_PAGECACHE_BUSY, null);
         }
 
         long beginTime = this.getSystemClock().now();
+        // TODO: 2019/12/25 写入CommitLog
         PutMessageResult result = this.commitLog.putMessage(msg);
 
         long elapsedTime = this.getSystemClock().now() - beginTime;
@@ -1129,6 +1137,7 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     public ConsumeQueue findConsumeQueue(String topic, int queueId) {
+        // TODO: 2019/12/28 一个topic对应一组ConsumeQueue
         ConcurrentMap<Integer, ConsumeQueue> map = consumeQueueTable.get(topic);
         if (null == map) {
             ConcurrentMap<Integer, ConsumeQueue> newMap = new ConcurrentHashMap<Integer, ConsumeQueue>(128);
@@ -1140,6 +1149,7 @@ public class DefaultMessageStore implements MessageStore {
             }
         }
 
+        // TODO: 2019/12/28 取出对应的queue
         ConsumeQueue logic = map.get(queueId);
         if (null == logic) {
             ConsumeQueue newLogic = new ConsumeQueue(
@@ -1295,6 +1305,7 @@ public class DefaultMessageStore implements MessageStore {
         File[] fileTopicList = dirLogic.listFiles();
         if (fileTopicList != null) {
 
+            // TODO: 2019/12/28 取每个topic下的ConsumeQueue
             for (File fileTopic : fileTopicList) {
                 String topic = fileTopic.getName();
 
@@ -1486,6 +1497,7 @@ public class DefaultMessageStore implements MessageStore {
             switch (tranType) {
                 case MessageSysFlag.TRANSACTION_NOT_TYPE:
                 case MessageSysFlag.TRANSACTION_COMMIT_TYPE:
+                    // TODO: 2019/12/28 更新ConsumeQueue
                     DefaultMessageStore.this.putMessagePositionInfo(request);
                     break;
                 case MessageSysFlag.TRANSACTION_PREPARED_TYPE:
@@ -1824,6 +1836,7 @@ public class DefaultMessageStore implements MessageStore {
                     break;
                 }
 
+                // TODO: 2019/12/28 reputFromOffset开始的所有有效数据
                 SelectMappedBufferResult result = DefaultMessageStore.this.commitLog.getData(reputFromOffset);
                 if (result != null) {
                     try {

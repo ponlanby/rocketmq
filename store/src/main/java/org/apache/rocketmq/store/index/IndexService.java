@@ -65,6 +65,7 @@ public class IndexService {
                     IndexFile f = new IndexFile(file.getPath(), this.hashSlotNum, this.indexNum, 0, 0);
                     f.load();
 
+                    // TODO: 2019/12/28 上次异常退出且indexFile上次刷盘时间小于该索引文件最大的消息时间戳则销毁
                     if (!lastExitOK) {
                         if (f.getEndTimestamp() > this.defaultMessageStore.getStoreCheckpoint()
                             .getIndexMsgTimestamp()) {
